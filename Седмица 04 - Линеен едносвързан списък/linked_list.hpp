@@ -2,6 +2,8 @@
 #define LINKED_LIST_HPP
 
 #include <cstddef>
+#include <functional>
+#include <stack>
 #include <utility>
 
 template <typename T>
@@ -114,6 +116,10 @@ public:
       return current != other.current;
     }
 
+    bool operator==(const Iterator& other) const {
+      return !(*this != other);
+    }
+
     Iterator& operator++() {
       current = current->next;
       return *this;
@@ -143,7 +149,154 @@ public:
 
   // ===========================================================
   
-  // WRITE YOUR PUBLIC METHODS HERE
+  void insert_after(const T& data, const Iterator& position) {
+    Node* current = position.current;
+
+    Node* new_node = new Node(data, current->next);
+    current->next = new_node;
+  }
+
+  void remove_at(const Iterator& position) {
+    if (position == begin()) {
+      remove_first();
+    } else if (position == Iterator(last)) {
+      remove_last(); 
+    } else {
+      Node* current = position.current;
+      Node* prev = previous(current);
+      prev->next = current->next;
+      delete current;
+    }
+  }
+
+  void append(const LinkedList& other) {
+    Node* current = other.first;
+    while (current) {
+      insert_last(current->data);
+      current = current->next;
+    }
+  }
+
+  void unique() {
+    Node* current = first;
+
+    while (current) {
+      Node *prev = current, *iter = current->next;
+
+      while (iter) {
+        if (current->data == iter->data) {
+          prev->next = iter->next;
+          if (iter == last) {
+            last = prev;
+          }
+          delete iter;
+          iter = prev->next;
+        } else {
+          iter = iter->next;
+          prev = prev->next;
+        }
+      }
+
+      current = current->next;
+    }
+  }
+
+  void filter(const std::function<bool(const T&)>& predicate) {
+    while (!predicate(first->data)) {
+      remove_first();
+    }
+
+    if (!first) {
+      last = nullptr;
+      return;
+    }
+
+    Node *current = first->next, *prev = first;
+    while (current) {
+      if (!predicate(current->data)) {
+        prev->next = current->next;
+        delete current;
+        current = prev->next;
+      } else {
+        current = current->next;
+        prev = prev->next;
+      }
+    }
+
+    last = prev;
+  }
+
+  void partition(const std::function<bool(const T&)>& predicate) {
+    Node *iter = first;
+    Node *left_begin = nullptr, *left_end = nullptr, *right_begin = nullptr, *right_end = nullptr;
+
+    while (iter) {
+      if (predicate(iter->data)) {
+        if (!left_begin) {
+          left_begin = left_end = iter;
+        } else {
+          left_end = left_end->next = iter;
+        }
+      } else {
+        if (!right_begin) {
+          right_begin = right_end = iter;
+        } else {
+          right_end = right_end->next = iter;
+        }
+      }
+
+      iter = iter->next;
+    }
+
+    if (left_end) left_end->next = right_begin;
+    if (right_end) right_end->next = nullptr;
+    first = left_begin ? left_begin : right_begin;
+    last = right_end ? right_end : left_end;
+  }
+
+  class ReverseIterator {
+  public:
+    ReverseIterator(Node* node) {
+      Node* current = node;
+      while (current) {
+        stack.push(current);
+        current = current->next;
+      }
+    }
+
+    bool operator!=(const ReverseIterator& other) const {
+      if (stack.empty()) {
+        return !other.stack.empty();
+      }
+
+      return other.stack.empty() || stack.top() != other.stack.top();
+    }
+
+    ReverseIterator& operator++() {
+      stack.pop();
+      return *this;
+    }
+
+    T& operator*() {
+      return stack.top()->data;
+    }
+
+    const T& operator*() const {
+      return stack.top()->data;
+    }
+
+  private:
+    friend LinkedList<T>;
+    std::stack<Node*> stack;
+  };
+  
+  ReverseIterator rbegin() const {
+    return ReverseIterator(first);
+  }
+
+  ReverseIterator rend() const {
+    return ReverseIterator(nullptr);
+  }
   
   // ===========================================================
 
@@ -169,7 +322,14 @@ private:
 
   // ===========================================================
   
-  // WRITE YOUR PRIVATE METHODS HERE
+  Node* previous(Node* current) const {
+    Node* iter = first;
+    while (iter->next != current) {
+      iter = iter->next;
+    }
+
+    return iter;
+  }
   
   // ===========================================================
 };

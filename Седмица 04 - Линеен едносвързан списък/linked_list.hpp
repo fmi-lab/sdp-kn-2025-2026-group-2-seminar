@@ -150,6 +150,11 @@ public:
   // ===========================================================
   
   void insert_after(const T& data, const Iterator& position) {
+    if (position == Iterator(last)) {
+      insert_last(data);
+      return;
+    }
+    
     Node* current = position.current;
 
     Node* new_node = new Node(data, current->next);
